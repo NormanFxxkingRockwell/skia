@@ -9,6 +9,10 @@ if (!defined(is_skia_standalone)) {
 is_skia_dev_build = is_skia_standalone && !is_official_build
 
 declare_args() {
+  skia_use_ohos = target_os == "ohos"
+}
+
+declare_args() {
   skia_android_serial = ""
   skia_compile_modules = false
   skia_compile_sksl_tests = false
@@ -47,10 +51,10 @@ declare_args() {
   skia_use_expat = !is_wasm
   skia_use_ffmpeg = false
   skia_use_fixed_gamma_text = is_android
-  skia_use_fontconfig = is_linux
+  skia_use_fontconfig = is_linux && !skia_use_ohos
   skia_use_fontations = false
   skia_use_fonthost_mac = is_mac || is_ios
-  skia_use_freetype = is_android || is_linux || is_wasm
+  skia_use_freetype = is_android || is_linux || is_wasm || skia_use_ohos
   skia_use_harfbuzz = true
   skia_use_gl = true
   skia_use_icu = true
@@ -71,7 +75,7 @@ declare_args() {
   skia_use_lua = is_skia_dev_build && !is_ios
   skia_use_metal = false
   skia_use_ndk_images = is_android && defined(ndk_api) && ndk_api >= 30
-  skia_use_perfetto = is_linux || is_mac || is_android
+  skia_use_perfetto = (is_linux && !skia_use_ohos) || is_mac || is_android
   skia_enable_pipeline_label_tracing = false
 
   # Currently only supported in Android framework
@@ -85,7 +89,7 @@ declare_args() {
   skia_use_webgl = is_wasm
   skia_use_webgpu = is_wasm
   skia_use_wuffs = true
-  skia_use_x11 = is_linux
+  skia_use_x11 = is_linux && !skia_use_ohos
   skia_use_xps = true
 
   # Use the safe mode for libcxx
@@ -105,6 +109,12 @@ declare_args() {
   }
 
   skia_build_rust_targets = false
+}
+
+declare_args() {
+  skia_use_ohos_native_window = skia_use_ohos
+  skia_use_ohos_egl = skia_use_ohos
+  skia_use_ohos_gles = skia_use_ohos
 }
 
 declare_args() {

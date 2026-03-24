@@ -2432,6 +2432,23 @@ if (skia_enable_tools) {
     }  # test_lib("gpu_tool_utils")
   }
 
+  if (skia_enable_ganesh && skia_use_gl && skia_use_egl && target_cpu != "wasm") {
+    test_lib("ohos_gl_test_support") {
+      public_defines = [ "GPU_TEST_UTILS=1" ]
+      sources = [
+        "tools/gpu/FlushFinishTracker.cpp",
+        "tools/gpu/FlushFinishTracker.h",
+        "tools/ganesh/GpuTimer.h",
+        "tools/ganesh/TestContext.cpp",
+        "tools/ganesh/TestContext.h",
+        "tools/ganesh/gl/GLTestContext.cpp",
+        "tools/ganesh/gl/GLTestContext.h",
+        "tools/ganesh/gl/egl/CreatePlatformGLTestContext_egl.cpp",
+      ]
+      libs = [ "EGL" ]
+    }
+  }
+
   test_lib("flags") {
     sources = [
       "tools/flags/CommandLineFlags.cpp",
@@ -2952,6 +2969,23 @@ if (skia_enable_tools) {
         deps = [
           ":skia",
           "modules/skshaper",
+        ]
+      }
+    }
+
+    if (skia_enable_fontmgr_custom_directory) {
+      test_app("ohos_text_smoke") {
+        sources = [ "tools/ohos_text_smoke.cpp" ]
+        deps = [ ":skia" ]
+      }
+    }
+
+    if (skia_enable_ganesh && skia_use_gl && skia_use_egl) {
+      test_app("ohos_egl_smoke") {
+        sources = [ "tools/ohos_egl_smoke.cpp" ]
+        deps = [
+          ":ohos_gl_test_support",
+          ":skia",
         ]
       }
     }
