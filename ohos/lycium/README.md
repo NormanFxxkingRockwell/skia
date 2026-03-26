@@ -82,3 +82,22 @@
 - `skia-lycium.patch`
 
 也应该同步更新。
+## 2026-03-26 最新同步
+
+- `SkFontMgr_ohos` 已继续推进到语言感知 fallback。
+- 当前除了 `OHOS NativeDrawing` 官方字体接口优先外，还新增了：
+  - `groupName + familyName` 更细匹配
+  - `bcp47` 语言感知 fallback
+- 当前真机 `ohos_text_smoke` 最新结果：
+
+```text
+font_families=235
+alias_harmonyos_sans=1
+alias_serif=1
+fallback_cjk=1
+fallback_arabic_lang=1
+fallback_tibetan_lang=1
+pixel_checksum=18319541926308614285
+```
+
+- 说明当前 `lycium` 同步内容已经不只是 Phase 3 的 shaping 路线，也包含了 Phase 4 字体管理增强。

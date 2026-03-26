@@ -19,8 +19,10 @@
 #include <native_drawing/drawing_text_typography.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 #include <vector>
 
 namespace {
@@ -31,10 +33,17 @@ struct OhosGenericAlias {
     int weight = 400;
 };
 
+struct OhosFallbackEntry {
+    SkString groupName;
+    SkString language;
+    SkString family;
+};
+
 struct OhosFontConfigData {
     std::vector<SkString> fontRoots;
     std::vector<OhosGenericAlias> genericAliases;
     std::vector<SkString> fallbackFamilies;
+    std::vector<OhosFallbackEntry> fallbackEntries;
     SkString defaultFamily;
 };
 
@@ -106,10 +115,55 @@ void append_native_drawing_fallbacks(const OH_Drawing_FontConfigInfo* info, Ohos
         for (size_t j = 0; j < group.fallbackInfoSize; ++j) {
             const auto& fallback = group.fallbackInfoSet[j];
             if (fallback.familyName && fallback.familyName[0] != '\0') {
-                push_unique(&config->fallbackFamilies, SkString(fallback.familyName));
+                OhosFallbackEntry entry;
+                if (group.groupName && group.groupName[0] != '\0') {
+                    entry.groupName = SkString(group.groupName);
+                }
+                if (fallback.language && fallback.language[0] != '\0') {
+                    entry.language = SkString(fallback.language);
+                }
+                entry.family = SkString(fallback.familyName);
+                config->fallbackEntries.push_back(entry);
+                push_unique(&config->fallbackFamilies, entry.family);
             }
         }
     }
+}
+
+bool language_matches(const SkString& expected, const char* const* bcp47, int bcp47Count) {
+    if (expected.isEmpty()) {
+        return true;
+    }
+    if (!bcp47 || bcp47Count <= 0) {
+        return false;
+    }
+
+    std::string expectedLower = expected.c_str();
+    std::transform(expectedLower.begin(), expectedLower.end(), expectedLower.begin(), ::tolower);
+    for (int i = 0; i < bcp47Count; ++i) {
+        if (!bcp47[i] || bcp47[i][0] == '\0') {
+            continue;
+        }
+        std::string actual = bcp47[i];
+        std::transform(actual.begin(), actual.end(), actual.begin(), ::tolower);
+
+        if (actual == expectedLower) {
+            return true;
+        }
+        if (actual.rfind(expectedLower + "-", 0) == 0) {
+            return true;
+        }
+        if (expectedLower.rfind(actual + "-", 0) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string to_lower_ascii(const char* value) {
+    std::string lowered = value ? value : "";
+    std::transform(lowered.begin(), lowered.end(), lowered.begin(), ::tolower);
+    return lowered;
 }
 
 bool load_native_drawing_font_config(OhosFontConfigData* config) {
@@ -366,27 +420,42 @@ protected:
 
     sk_sp<SkTypeface> onMatchFamilyStyleCharacter(const char familyName[],
                                                   const SkFontStyle& style,
-                                                  const char*[],
-                                                  int,
+                                                  const char* bcp47[],
+                                                  int bcp47Count,
                                                   SkUnichar character) const override {
         if (!fBaseFontMgr) {
             return nullptr;
         }
 
-        if (const char* mapped = this->map_family_name(familyName)) {
+        const char* mapped = this->map_family_name(familyName);
+        if (mapped) {
             if (auto face = fBaseFontMgr->matchFamilyStyle(mapped, style); contains_glyph(face, character)) {
                 return face;
             }
         }
 
+        const SkString mappedFamily = mapped ? SkString(mapped) : SkString();
+        for (const auto& entry : fConfig.fallbackEntries) {
+            if (!this->group_matches_requested_family(entry.groupName, familyName, mappedFamily)) {
+                continue;
+            }
+            if (!language_matches(entry.language, bcp47, bcp47Count)) {
+                continue;
+            }
+            if (auto face = this->match_configured_family_style(entry.family, style);
+                contains_glyph(face, character)) {
+                return face;
+            }
+        }
+
         for (const auto& family : this->special_fallbacks(character)) {
-            if (auto face = fBaseFontMgr->matchFamilyStyle(family.c_str(), style); contains_glyph(face, character)) {
+            if (auto face = this->match_configured_family_style(family, style); contains_glyph(face, character)) {
                 return face;
             }
         }
 
         for (const auto& family : fConfig.fallbackFamilies) {
-            if (auto face = fBaseFontMgr->matchFamilyStyle(family.c_str(), style); contains_glyph(face, character)) {
+            if (auto face = this->match_configured_family_style(family, style); contains_glyph(face, character)) {
                 return face;
             }
         }
@@ -418,6 +487,51 @@ protected:
 private:
     static bool contains_glyph(const sk_sp<SkTypeface>& typeface, SkUnichar character) {
         return typeface && typeface->unicharToGlyph(character) != 0;
+    }
+
+    bool family_equals(const char* lhs, const char* rhs) const {
+        if (!lhs || !rhs) {
+            return false;
+        }
+        return to_lower_ascii(lhs) == to_lower_ascii(rhs);
+    }
+
+    sk_sp<SkTypeface> match_configured_family_style(const SkString& family,
+                                                    const SkFontStyle& style) const {
+        if (!fBaseFontMgr || family.isEmpty()) {
+            return nullptr;
+        }
+
+        if (auto face = fBaseFontMgr->matchFamilyStyle(family.c_str(), style)) {
+            return face;
+        }
+
+        if (const char* mapped = this->map_family_name(family.c_str());
+            mapped && !family_equals(mapped, family.c_str())) {
+            return fBaseFontMgr->matchFamilyStyle(mapped, style);
+        }
+        return nullptr;
+    }
+
+    bool group_matches_requested_family(const SkString& groupName,
+                                        const char* requestedFamily,
+                                        const SkString& mappedFamily) const {
+        if (groupName.isEmpty()) {
+            return true;
+        }
+        if (requestedFamily && this->family_equals(groupName.c_str(), requestedFamily)) {
+            return true;
+        }
+        if (!mappedFamily.isEmpty() && this->family_equals(groupName.c_str(), mappedFamily.c_str())) {
+            return true;
+        }
+        if (requestedFamily) {
+            if (const char* requestedMapped = this->map_family_name(requestedFamily);
+                requestedMapped && this->family_equals(groupName.c_str(), requestedMapped)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     const char* map_family_name(const char* familyName) const {

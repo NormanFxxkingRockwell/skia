@@ -69,6 +69,12 @@ int main(int argc, char** argv) {
     sk_sp<SkTypeface> serifAlias = fontMgr->matchFamilyStyle("serif", SkFontStyle());
     sk_sp<SkTypeface> cjkFallback =
             fontMgr->matchFamilyStyleCharacter(nullptr, SkFontStyle(), nullptr, 0, 0x4E2D);
+    const char* arabicLangs[] = { "ar", "ar-SA" };
+    const char* tibetanLangs[] = { "bo", "bo-CN" };
+    sk_sp<SkTypeface> arabicFallback =
+            fontMgr->matchFamilyStyleCharacter("sans-serif", SkFontStyle(), arabicLangs, 2, 0x0626);
+    sk_sp<SkTypeface> tibetanFallback =
+            fontMgr->matchFamilyStyleCharacter("sans-serif", SkFontStyle(), tibetanLangs, 2, 0x0F56);
 
     auto surface = SkSurfaces::Raster(SkImageInfo::MakeN32Premul(640, 200));
     if (!surface) {
@@ -120,6 +126,8 @@ int main(int argc, char** argv) {
     std::cout << "alias_harmonyos_sans=" << (sansAlias ? 1 : 0) << "\n";
     std::cout << "alias_serif=" << (serifAlias ? 1 : 0) << "\n";
     std::cout << "fallback_cjk=" << (cjkFallback ? 1 : 0) << "\n";
+    std::cout << "fallback_arabic_lang=" << (arabicFallback ? 1 : 0) << "\n";
+    std::cout << "fallback_tibetan_lang=" << (tibetanFallback ? 1 : 0) << "\n";
     std::cout << "pixel_checksum=" << pixel_checksum(bitmap) << "\n";
     return 0;
 }
