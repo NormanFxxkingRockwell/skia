@@ -15,9 +15,8 @@
 #include "include/core/SkFontMgr.h"
 #include "include/core/SkFontStyle.h"
 #include "include/core/SkPaint.h"
-#include "include/core/SkString.h"
 #include "include/core/SkSurface.h"
-#include "include/ports/SkFontMgr_directory.h"
+#include "include/ports/SkFontMgr_ohos.h"
 
 namespace {
 
@@ -37,30 +36,39 @@ uint64_t pixel_checksum(const SkBitmap& bitmap) {
 }
 
 int usage(const char* argv0) {
-    std::cerr << "usage: " << argv0 << " <font_dir>\n";
+    std::cerr << "usage: " << argv0 << " [font_dir]\n";
     return 2;
 }
 
 }  // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 2) {
+    if (argc > 2) {
         return usage(argv[0]);
     }
 
-    const char* fontDir = argv[1];
+    const char* fontDir = argc == 2 ? argv[1] : nullptr;
 
-    sk_sp<SkFontMgr> fontMgr = SkFontMgr_New_Custom_Directory(fontDir);
+    sk_sp<SkFontMgr> fontMgr = SkFontMgr_New_OHOS(fontDir);
     if (!fontMgr || fontMgr->countFamilies() == 0) {
-        std::cerr << "failed to load fonts from directory: " << fontDir << "\n";
+        std::cerr << "failed to load fonts from OHOS font manager";
+        if (fontDir) {
+            std::cerr << ": " << fontDir;
+        }
+        std::cerr << "\n";
         return 3;
     }
 
     sk_sp<SkTypeface> typeface = fontMgr->legacyMakeTypeface(nullptr, SkFontStyle());
     if (!typeface) {
-        std::cerr << "failed to create default typeface from directory: " << fontDir << "\n";
+        std::cerr << "failed to create default typeface from OHOS font manager\n";
         return 4;
     }
+
+    sk_sp<SkTypeface> sansAlias = fontMgr->matchFamilyStyle("HarmonyOS-Sans", SkFontStyle());
+    sk_sp<SkTypeface> serifAlias = fontMgr->matchFamilyStyle("serif", SkFontStyle());
+    sk_sp<SkTypeface> cjkFallback =
+            fontMgr->matchFamilyStyleCharacter(nullptr, SkFontStyle(), nullptr, 0, 0x4E2D);
 
     auto surface = SkSurfaces::Raster(SkImageInfo::MakeN32Premul(640, 200));
     if (!surface) {
@@ -92,7 +100,11 @@ int main(int argc, char** argv) {
     SkFont bodyFont(typeface, 26.0f);
     bodyFont.setSubpixel(true);
     canvas->drawString("OHOS font directory smoke", 36.0f, 132.0f, bodyFont, bodyPaint);
-    canvas->drawString("deep adaptation phase 4", 36.0f, 168.0f, bodyFont, bodyPaint);
+    canvas->drawString(u8"\u4e2d\u6587\u5b57\u4f53\u6e32\u67d3\u9a8c\u8bc1",
+                       36.0f,
+                       168.0f,
+                       bodyFont,
+                       bodyPaint);
 
     SkBitmap bitmap;
     if (!bitmap.tryAllocPixels(surface->imageInfo())) {
@@ -105,6 +117,9 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "font_families=" << fontMgr->countFamilies() << "\n";
+    std::cout << "alias_harmonyos_sans=" << (sansAlias ? 1 : 0) << "\n";
+    std::cout << "alias_serif=" << (serifAlias ? 1 : 0) << "\n";
+    std::cout << "fallback_cjk=" << (cjkFallback ? 1 : 0) << "\n";
     std::cout << "pixel_checksum=" << pixel_checksum(bitmap) << "\n";
     return 0;
 }

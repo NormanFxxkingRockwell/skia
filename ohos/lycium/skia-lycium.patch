@@ -1,9 +1,9 @@
 diff --git a/tpc_c_cplusplus/community/skia/HPKBUILD b/tpc_c_cplusplus/community/skia/HPKBUILD
 new file mode 100644
-index 0000000..0000000
+index 0000000..327dc47
 --- /dev/null
 +++ b/tpc_c_cplusplus/community/skia/HPKBUILD
-@@ -0,0 +1,151 @@
+@@ -0,0 +1,95 @@
 +# Copyright (c) 2026 Huawei Device Co., Ltd.
 +# Licensed under the Apache License, Version 2.0 (the "License");
 +# you may not use this file except in compliance with the License.
@@ -43,39 +43,6 @@ index 0000000..0000000
 +
 +SKIA_LIB_OUT=out/ohos-lib
 +SKIA_TOOLS_OUT=out/ohos-tools
-+SKIA_WORKTREE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/libs/Skia"
-+SKIA_CACHE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/outputs/Skia/cache"
-+
-+sync_skia_git_dep() {
-+    local dep_dir="$1"
-+    local dep_repo="$2"
-+    local dep_rev="$3"
-+    local dep_name
-+    local cache_dir
-+
-+    dep_name="$(basename "$dep_dir")"
-+    cache_dir="${SKIA_CACHE_ROOT}/git/${dep_name}"
-+
-+    mkdir -p "${SKIA_CACHE_ROOT}/git"
-+
-+    if [ -d "${cache_dir}/.git" ]; then
-+        local cache_rev
-+        cache_rev=$(git -C "$cache_dir" rev-parse HEAD 2>/dev/null || true)
-+        if [ "$cache_rev" != "$dep_rev" ]; then
-+            git -C "$cache_dir" fetch --depth=1 origin "$dep_rev" >> "$buildlog" 2>&1
-+            git -C "$cache_dir" checkout --quiet "$dep_rev" >> "$buildlog" 2>&1
-+        fi
-+    else
-+        rm -rf "$cache_dir"
-+        git clone --quiet --no-checkout "$dep_repo" "$cache_dir" >> "$buildlog" 2>&1
-+        git -C "$cache_dir" fetch --depth=1 origin "$dep_rev" >> "$buildlog" 2>&1
-+        git -C "$cache_dir" checkout --quiet "$dep_rev" >> "$buildlog" 2>&1
-+    fi
-+
-+    rm -rf "$dep_dir"
-+    cp -a "$cache_dir" "$dep_dir"
-+    git -C "$dep_dir" checkout --quiet "$dep_rev" >> "$buildlog" 2>&1
-+}
 +
 +prepare() {
 +    if [ "$ARCH" != "arm64-v8a" ]; then
@@ -87,38 +54,8 @@ index 0000000..0000000
 +
 +    cd "$builddir"
 +
-+    mkdir -p "${SKIA_CACHE_ROOT}"
-+
-+    if [ ! -x bin/gn ]; then
-+        python3 bin/fetch-gn >> "$buildlog" 2>&1
-+    fi
-+    if [ ! -x third_party/ninja/ninja ]; then
-+        python3 bin/fetch-ninja >> "$buildlog" 2>&1
-+    fi
-+
-+    cp -f "${SKIA_WORKTREE_ROOT}/BUILD.gn" BUILD.gn
-+    mkdir -p gn tools
-+    cp -f "${SKIA_WORKTREE_ROOT}/gn/skia.gni" gn/skia.gni
-+    cp -f "${SKIA_WORKTREE_ROOT}/tools/ohos_text_smoke.cpp" tools/ohos_text_smoke.cpp
-+    cp -f "${SKIA_WORKTREE_ROOT}/tools/ohos_shaper_smoke.cpp" tools/ohos_shaper_smoke.cpp
-+    cp -f "${SKIA_WORKTREE_ROOT}/tools/ohos_egl_smoke.cpp" tools/ohos_egl_smoke.cpp
-+
-+    mkdir -p third_party/externals
-+    sync_skia_git_dep "third_party/externals/freetype" \
-+        "https://chromium.googlesource.com/chromium/src/third_party/freetype2.git" \
-+        "b91f75bd02db43b06d634591eb286d3eb0ce3b65"
-+    sync_skia_git_dep "third_party/externals/harfbuzz" \
-+        "https://chromium.googlesource.com/external/github.com/harfbuzz/harfbuzz.git" \
-+        "31695252eb6ed25096893aec7f848889dad874bc"
-+    sync_skia_git_dep "third_party/externals/icu" \
-+        "https://chromium.googlesource.com/chromium/deps/icu.git" \
-+        "364118a1d9da24bb5b770ac3d762ac144d6da5a4"
-+    sync_skia_git_dep "third_party/externals/libpng" \
-+        "https://skia.googlesource.com/third_party/libpng.git" \
-+        "4e3f57d50f552841550a36eabbb3fbcecacb7750"
-+    sync_skia_git_dep "third_party/externals/zlib" \
-+        "https://chromium.googlesource.com/chromium/src/third_party/zlib" \
-+        "646b7f569718921d7d4b5b8e22572ff6c76f2596"
++    python3 bin/fetch-gn >> "$buildlog" 2>&1
++    python3 bin/fetch-ninja >> "$buildlog" 2>&1
 +
 +    mkdir -p "$SKIA_LIB_OUT" "$SKIA_TOOLS_OUT"
 +    cd "$OLDPWD"
@@ -128,14 +65,14 @@ index 0000000..0000000
 +    cd "$builddir"
 +
 +    local lib_args
-+    lib_args='cc="'"$CC"'" cxx="'"$CXX"'" ar="'"$AR"'" target_os="linux" target_cpu="arm64" is_official_build=true is_debug=false is_component_build=true skia_use_ohos=true skia_use_fontconfig=false skia_use_freetype=true skia_use_system_freetype2=false skia_use_system_harfbuzz=false skia_use_system_libpng=false skia_use_system_zlib=false skia_use_system_icu=false skia_use_expat=false skia_use_x11=false skia_use_egl=true skia_use_gl=true skia_use_vulkan=false skia_use_perfetto=false skia_enable_pdf=false skia_enable_svg=false skia_enable_skottie=false skia_use_icu=true skia_use_bidi=false skia_use_zlib=false skia_use_libpng_decode=false skia_use_libpng_encode=false skia_use_libwebp_decode=false skia_use_libwebp_encode=false skia_use_libjpeg_turbo_decode=false skia_use_libjpeg_turbo_encode=false skia_use_wuffs=false skia_use_dng_sdk=false skia_use_piex=false skia_use_harfbuzz=true extra_cflags=["-DOHOS_NDK","-D__MUSL__=1","-fPIC"] extra_cflags_cc=["-std=c++17"]'
++    lib_args='cc="'"$CC"'" cxx="'"$CXX"'" ar="'"$AR"'" target_os="linux" target_cpu="arm64" is_official_build=true is_debug=false is_component_build=true skia_use_ohos=true skia_use_fontconfig=false skia_use_freetype=false skia_use_expat=false skia_use_x11=false skia_use_egl=false skia_use_gl=false skia_use_vulkan=false skia_use_perfetto=false skia_enable_pdf=false skia_enable_svg=false skia_enable_skottie=false skia_use_icu=false skia_use_zlib=false skia_use_libpng_decode=false skia_use_libpng_encode=false skia_use_libwebp_decode=false skia_use_libwebp_encode=false skia_use_libjpeg_turbo_decode=false skia_use_libjpeg_turbo_encode=false skia_use_wuffs=false skia_use_dng_sdk=false skia_use_piex=false skia_use_harfbuzz=false extra_cflags=["-DOHOS_NDK","-D__MUSL__=1","-fPIC"] extra_cflags_cc=["-std=c++17"]'
 +    bin/gn gen "$SKIA_LIB_OUT" --args="$lib_args" >> "$buildlog" 2>&1
 +    third_party/ninja/ninja -C "$SKIA_LIB_OUT" skia >> "$buildlog" 2>&1
 +
 +    local tools_args
-+    tools_args='cc="'"$CC"'" cxx="'"$CXX"'" ar="'"$AR"'" target_os="linux" target_cpu="arm64" is_official_build=true is_debug=false is_component_build=false skia_compile_modules=false skia_enable_tools=true skia_use_ohos=true skia_use_fontconfig=false skia_use_freetype=true skia_use_system_freetype2=false skia_use_system_harfbuzz=false skia_use_system_libpng=false skia_use_system_zlib=false skia_use_system_icu=false skia_use_expat=false skia_use_x11=false skia_use_egl=true skia_use_gl=true skia_use_vulkan=false skia_use_perfetto=false skia_enable_pdf=false skia_enable_svg=false skia_enable_skottie=false skia_use_icu=true skia_use_bidi=false skia_use_zlib=false skia_use_libpng_decode=false skia_use_libpng_encode=false skia_use_libwebp_decode=false skia_use_libwebp_encode=false skia_use_libjpeg_turbo_decode=false skia_use_libjpeg_turbo_encode=false skia_use_wuffs=false skia_use_dng_sdk=false skia_use_piex=false skia_use_harfbuzz=true extra_cflags=["-DOHOS_NDK","-D__MUSL__=1","-fPIC"] extra_cflags_cc=["-std=c++17"]'
++    tools_args='cc="'"$CC"'" cxx="'"$CXX"'" ar="'"$AR"'" target_os="linux" target_cpu="arm64" is_official_build=true is_debug=false is_component_build=false skia_compile_modules=false skia_enable_tools=true skia_use_ohos=true skia_use_fontconfig=false skia_use_freetype=false skia_use_expat=false skia_use_x11=false skia_use_egl=true skia_use_gl=true skia_use_vulkan=false skia_use_perfetto=false skia_enable_pdf=false skia_enable_svg=false skia_enable_skottie=false skia_use_icu=false skia_use_zlib=false skia_use_libpng_decode=false skia_use_libpng_encode=false skia_use_libwebp_decode=false skia_use_libwebp_encode=false skia_use_libjpeg_turbo_decode=false skia_use_libjpeg_turbo_encode=false skia_use_wuffs=false skia_use_dng_sdk=false skia_use_piex=false skia_use_harfbuzz=false extra_cflags=["-DOHOS_NDK","-D__MUSL__=1","-fPIC"] extra_cflags_cc=["-std=c++17"]'
 +    bin/gn gen "$SKIA_TOOLS_OUT" --args="$tools_args" >> "$buildlog" 2>&1
-+    third_party/ninja/ninja -C "$SKIA_TOOLS_OUT" ohos_egl_smoke ohos_text_smoke ohos_shaper_smoke >> "$buildlog" 2>&1
++    third_party/ninja/ninja -C "$SKIA_TOOLS_OUT" sksl-minify ohos_egl_smoke >> "$buildlog" 2>&1
 +
 +    cd "$OLDPWD"
 +}
@@ -147,15 +84,8 @@ index 0000000..0000000
 +    mkdir -p "${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/bin"
 +
 +    cp -f "$SKIA_LIB_OUT/libskia.so" "${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/lib/"
-+    if [ -f "$SKIA_TOOLS_OUT/ohos_egl_smoke" ]; then
-+        cp -f "$SKIA_TOOLS_OUT/ohos_egl_smoke" "${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/bin/"
-+    fi
-+    if [ -f "$SKIA_TOOLS_OUT/ohos_text_smoke" ]; then
-+        cp -f "$SKIA_TOOLS_OUT/ohos_text_smoke" "${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/bin/"
-+    fi
-+    if [ -f "$SKIA_TOOLS_OUT/ohos_shaper_smoke" ]; then
-+        cp -f "$SKIA_TOOLS_OUT/ohos_shaper_smoke" "${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/bin/"
-+    fi
++    cp -f "$SKIA_TOOLS_OUT/sksl-minify" "${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/bin/"
++    cp -f "$SKIA_TOOLS_OUT/ohos_egl_smoke" "${LYCIUM_ROOT}/usr/${pkgname}/${ARCH}/bin/"
 +
 +    cd "$OLDPWD"
 +    unsetarm64ENV
@@ -171,7 +101,7 @@ index 0000000..0000000
 +}
 diff --git a/tpc_c_cplusplus/community/skia/SHA512SUM b/tpc_c_cplusplus/community/skia/SHA512SUM
 new file mode 100644
-index 0000000..0000000
+index 0000000..8757eec
 --- /dev/null
 +++ b/tpc_c_cplusplus/community/skia/SHA512SUM
 @@ -0,0 +1 @@

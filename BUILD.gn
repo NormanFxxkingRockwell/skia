@@ -384,6 +384,18 @@ optional("fontmgr_custom_empty") {
   sources = skia_ports_fontmgr_empty_sources
 }
 
+optional("fontmgr_ohos") {
+  enabled = skia_enable_fontmgr_ohos
+  public_defines = [ "SK_FONTMGR_OHOS_AVAILABLE" ]
+  deps = [
+    ":fontmgr_custom",
+    ":typeface_freetype",
+  ]
+  libs = [ "native_drawing" ]
+  public = [ "include/ports/SkFontMgr_ohos.h" ]
+  sources = [ "src/ports/SkFontMgr_ohos.cpp" ]
+}
+
 skia_source_set("typeface_proxy") {
   configs = [ ":skia_public" ]
   sources = skia_ports_typeface_proxy_sources
@@ -1805,6 +1817,7 @@ skia_source_set("core") {
     ":fontmgr_custom_directory",
     ":fontmgr_custom_embedded",
     ":fontmgr_custom_empty",
+    ":fontmgr_ohos",
     ":fontmgr_fontations_empty",
     ":fontmgr_fontconfig",
     ":fontmgr_mac_ct",
@@ -2973,10 +2986,23 @@ if (skia_enable_tools) {
       }
     }
 
-    if (skia_enable_fontmgr_custom_directory) {
+    if (skia_enable_fontmgr_custom_directory || skia_enable_fontmgr_ohos) {
       test_app("ohos_text_smoke") {
         sources = [ "tools/ohos_text_smoke.cpp" ]
         deps = [ ":skia" ]
+      }
+    }
+
+    if ((skia_enable_fontmgr_custom_directory || skia_enable_fontmgr_ohos) &&
+        skia_use_harfbuzz &&
+        skia_enable_skunicode) {
+      test_app("ohos_shaper_smoke") {
+        sources = [ "tools/ohos_shaper_smoke.cpp" ]
+        deps = [
+          ":skia",
+          "modules/skshaper",
+          "modules/skunicode",
+        ]
       }
     }
 
